@@ -15,6 +15,7 @@ import { addTransaction, deleteTransaction, getPeople, getTransactionsByPerson }
 
 export default function DetailScreen() {
   const { id, name } = useLocalSearchParams();
+  const personId = Number(id);
   const router = useRouter();
   const [transactions, setTransactions] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -30,12 +31,12 @@ export default function DetailScreen() {
 
   const loadData = async () => {
     const people = await getPeople();
-    const person = people.find(p => p.id === id);
+    const person = people.find(p => p.id === personId);
     if (person) {
       setBalance(person.balance);
       setPersonName(person.name);
     }
-    const data = await getTransactionsByPerson(id);
+    const data = await getTransactionsByPerson(personId);
     setTransactions([...data].reverse());
   };
 
@@ -53,7 +54,7 @@ export default function DetailScreen() {
       Alert.alert('Lỗi', 'Vui lòng nhập số tiền hợp lệ');
       return;
     }
-    const result = await addTransaction(id, numAmount, type, note);
+    const result = await addTransaction(personId, numAmount, type, note);
     if (result?.error) {
       Alert.alert('Lỗi', result.error);
       return;
