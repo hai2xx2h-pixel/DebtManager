@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
   Alert,
@@ -47,6 +47,7 @@ const calculateCurrentBalance = (item) => {
 };
 
 export default function HomeScreen() {
+  const router = useRouter();
   const [debts, setDebts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState('Tháng');
@@ -339,8 +340,14 @@ export default function HomeScreen() {
                   </View>
 
                   <View style={styles.cardFooter}>
-                    <TouchableOpacity style={styles.detailBtn} onPress={() => openEditModal(item)}>
-                      <Text style={styles.detailBtnTxt}>Sửa / Chi tiết ➔</Text>
+                    <TouchableOpacity style={styles.editIconBtn} onPress={() => openEditModal(item)}>
+                      <Text style={{ fontSize: 13 }}>✏️ Sửa</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.detailBtn}
+                      onPress={() => router.push({ pathname: '/detail', params: { id: item.id, name: item.name } })}
+                    >
+                      <Text style={styles.detailBtnTxt}>Lịch sử giao dịch ➔</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -462,7 +469,8 @@ const styles = StyleSheet.create({
   interestBadgeText: { color: '#38bdf8', fontSize: 11, marginTop: 2 },
   cardRight: { alignItems: 'flex-end' },
   amountText: { fontSize: 16, fontWeight: '800' },
-  cardFooter: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 },
+  cardFooter: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginTop: 12 },
+  editIconBtn: { paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#0a0d14', borderRadius: 10 },
   detailBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#0a0d14', borderRadius: 10 },
   detailBtnTxt: { color: '#2563eb', fontSize: 11, fontWeight: '700' },
   fabCircleButton: { 
