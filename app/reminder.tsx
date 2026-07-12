@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Linking,
@@ -11,19 +12,55 @@ import {
   View
 } from 'react-native';
 import { getPeople } from '../storage/db';
+import {
+  getNotificationPermissionStatus,
+  rescheduleAllReminders,
+  requestNotificationPermission
+} from '../storage/notifications';
 
 export default function ReminderScreen() {
   const [people, setPeople] = useState([]);
+  const [permissionStatus, setPermissionStatus] = useState('undetermined');
+  const [syncing, setSyncing] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
       loadData();
+      if (Platform.OS !== 'web') {
+        getNotificationPermissionStatus().then(setPermissionStatus);
+      }
     }, [])
   );
 
   const loadData = async () => {
     const data = await getPeople();
     setPeople(data.filter(p => p.balance > 0));
+  };
+
+  const handleSyncReminders = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Không hỗ trợ', 'Thông báo đẩy chỉ hoạt động trên app điện thoại, không hoạt động trên bản web.');
+      return;
+    }
+    setSyncing(true);
+    try {
+      const granted = await requestNotificationPermission();
+      setPermissionStatus(granted ? 'granted' : 'denied');
+      if (!granted) {
+        Alert.alert(
+          'Chưa cấp quyền',
+          'Bạn cần bật quyền thông báo cho app trong Cài đặt điện thoại để nhận nhắc nợ tự động.'
+        );
+        return;
+      }
+      const data = await getPeople();
+      await rescheduleAllReminders(data.filter(p => p.balance > 0 && p.dueDate));
+      Alert.alert('Xong', 'Đã đồng bộ lại lịch nhắc nợ cho tất cả các khoản có hẹn ngày trả.');
+    } catch (e) {
+      Alert.alert('Lỗi', 'Không thể đồng bộ thông báo.');
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const showOptions = (person) => {
@@ -62,6 +99,30 @@ export default function ReminderScreen() {
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>📞 Bấm vào tên để gọi hoặc nhắn tin nhắc nợ</Text>
       </View>
+
+      {Platform.OS !== 'web' && (
+        <View style={styles.notifyBox}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.notifyTitle}>🔔 Thông báo nhắc nợ tự động</Text>
+            <Text style={styles.notifySub}>
+              {permissionStatus === 'granted'
+                ? 'Đang bật - tự nhắc trước 1 ngày và đúng ngày hẹn trả'
+                : 'Chưa bật - bấm nút để cho phép và đồng bộ'}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.syncBtn, permissionStatus === 'granted' && styles.syncBtnActive]}
+            onPress={handleSyncReminders}
+            disabled={syncing}
+          >
+            {syncing ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.syncBtnTxt}>{permissionStatus === 'granted' ? 'Đồng bộ lại' : 'Bật ngay'}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       <FlatList
         data={people}
@@ -129,6 +190,18 @@ const styles = StyleSheet.create({
     padding: 14, borderWidth: 1, borderColor: '#2563eb40',
   },
   infoText: { color: '#93c5fd', fontSize: 13, textAlign: 'center' },
+  notifyBox: {
+    backgroundColor: '#111827', marginHorizontal: 16, marginBottom: 16, borderRadius: 14,
+    padding: 14, borderWidth: 1, borderColor: '#1e293b',
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+  },
+  notifyTitle: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  notifySub: { color: '#64748b', fontSize: 11, marginTop: 3 },
+  syncBtn: {
+    backgroundColor: '#1e293b', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10,
+  },
+  syncBtnActive: { backgroundColor: '#2563eb' },
+  syncBtnTxt: { color: '#fff', fontSize: 12, fontWeight: '700' },
   listContent: { paddingHorizontal: 16, paddingBottom: 100 },
   personCard: {
     backgroundColor: '#111827', borderRadius: 16, marginBottom: 12,
