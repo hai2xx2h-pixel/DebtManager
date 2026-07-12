@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 // Hãy kiểm tra đường dẫn import này cho đúng với cấu trúc thư mục chứa file db.js của bạn
 import { addPerson, deletePerson, getPeople, updatePerson } from '../storage/db';
+import { cancelDebtReminders, scheduleDebtReminder } from '../storage/notifications';
 
 const { width } = Dimensions.get('window');
 
@@ -194,8 +195,18 @@ export default function HomeScreen() {
 
       if (selectedDebt) {
         await updatePerson(selectedDebt.id, payload);
+        await scheduleDebtReminder({ ...payload, id: selectedDebt.id });
       } else {
-        await addPerson(payload);
+        const res = await addPerson(payload);
+        const newId = res && res.lastInsertRowId ? res.lastInsertRowId : null;
+        if (newId) {
+          await scheduleDebtReminder({ ...payload, id: newId });
+        } else {
+          // Web hoặc không lấy được id ngay: tìm lại theo dữ liệu vừa thêm
+          const list = await getPeople();
+          const created = list.find(p => p.name === payload.name && p.createdAt === payload.createdAt);
+          if (created) await scheduleDebtReminder(created);
+        }
       }
       setModalVisible(false);
       await loadData();
@@ -211,6 +222,7 @@ export default function HomeScreen() {
         text: 'Xóa', style: 'destructive',
         onPress: async () => {
           await deletePerson(id);
+          await cancelDebtReminders(id);
           setModalVisible(false);
           await loadData();
         }
