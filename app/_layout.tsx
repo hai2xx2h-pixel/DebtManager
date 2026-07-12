@@ -1,8 +1,22 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
 import { Platform } from 'react-native';
+import { getPeople } from '../storage/db';
+import { rescheduleAllReminders, requestNotificationPermission } from '../storage/notifications';
 
 export default function RootLayout() {
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    (async () => {
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        const people = await getPeople();
+        await rescheduleAllReminders(people);
+      }
+    })();
+  }, []);
+
   return (
     <Tabs
       screenOptions={{
