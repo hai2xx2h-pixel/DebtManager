@@ -12,6 +12,7 @@ import {
   View
 } from 'react-native';
 import { addTransaction, deleteTransaction, getPeople, getTransactionsByPerson } from '../storage/db';
+import { cancelDebtReminders, scheduleDebtReminder } from '../storage/notifications';
 
 export default function DetailScreen() {
   const { id, name } = useLocalSearchParams();
@@ -48,6 +49,17 @@ export default function DetailScreen() {
 
   const parseCurrency = (value) => value.replace(/\./g, '');
 
+  const syncReminder = async () => {
+    const people = await getPeople();
+    const person = people.find(p => p.id === personId);
+    if (!person) return;
+    if (!person.balance || person.balance <= 0) {
+      await cancelDebtReminders(personId);
+    } else {
+      await scheduleDebtReminder(person);
+    }
+  };
+
   const handleAddTransaction = async () => {
     const numAmount = parseFloat(parseCurrency(amount));
     if (!amount || isNaN(numAmount) || numAmount <= 0) {
@@ -63,6 +75,7 @@ export default function DetailScreen() {
     setNote('');
     setModalVisible(false);
     await loadData();
+    await syncReminder();
   };
 
   const handleDelete = (transId) => {
@@ -73,6 +86,7 @@ export default function DetailScreen() {
         onPress: async () => {
           await deleteTransaction(transId);
           await loadData();
+          await syncReminder();
         }
       }
     ]);
