@@ -16,6 +16,7 @@ import {
 // Hãy kiểm tra đường dẫn import này cho đúng với cấu trúc thư mục chứa file db.js của bạn
 import { addPerson, deletePerson, getPeople, updatePerson } from '../storage/db';
 import { cancelDebtReminders, scheduleDebtReminder } from '../storage/notifications';
+import { confirmAction } from '../utils/confirm';
 
 const { width } = Dimensions.get('window');
 
@@ -216,18 +217,12 @@ export default function HomeScreen() {
   };
 
   const handleDeleteDebt = (id) => {
-    Alert.alert('Xác nhận', 'Bạn muốn xóa khoản nợ này?', [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Xóa', style: 'destructive',
-        onPress: async () => {
-          await deletePerson(id);
-          await cancelDebtReminders(id);
-          setModalVisible(false);
-          await loadData();
-        }
-      }
-    ]);
+    confirmAction('Xác nhận', 'Bạn muốn xóa khoản nợ này?', async () => {
+      await deletePerson(id);
+      await cancelDebtReminders(id);
+      setModalVisible(false);
+      await loadData();
+    });
   };
 
   return (
