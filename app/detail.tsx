@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { addTransaction, deleteTransaction, getPeople, getTransactionsByPerson } from '../storage/db';
 import { cancelDebtReminders, scheduleDebtReminder } from '../storage/notifications';
+import { confirmAction } from '../utils/confirm';
 
 export default function DetailScreen() {
   const { id, name } = useLocalSearchParams();
@@ -79,17 +80,11 @@ export default function DetailScreen() {
   };
 
   const handleDelete = (transId) => {
-    Alert.alert('Xác nhận', 'Xóa giao dịch này?', [
-      { text: 'Hủy' },
-      {
-        text: 'Xóa', style: 'destructive',
-        onPress: async () => {
-          await deleteTransaction(transId);
-          await loadData();
-          await syncReminder();
-        }
-      }
-    ]);
+    confirmAction('Xác nhận', 'Xóa giao dịch này?', async () => {
+      await deleteTransaction(transId);
+      await loadData();
+      await syncReminder();
+    });
   };
 
   const formatDate = (iso) => {
